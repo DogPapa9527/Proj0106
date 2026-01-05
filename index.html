@@ -3,42 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日本旅遊射飛鏢 - 修正版</title>
+    <title>日本旅遊射飛鏢 - 極速版</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZn1r2Jpne1I2rOms85YwGNvs029XGMcib8J9OH66/4f7c1lDQ6woGw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; }
         body { font-family: "Microsoft JhengHei", "Hiragino Sans", sans-serif; }
         
-        /* 給地圖一個預設底色，確認容器存在 */
-        #map { height: 100vh; width: 100%; z-index: 1; background-color: #e5e5e5; }
+        /* 地圖底色設為淺灰，避免載入瞬間全白刺眼 */
+        #map { height: 100vh; width: 100%; z-index: 1; background-color: #f6f6f6; }
         
-        /* 控制面板樣式 */
+        /* 控制面板 */
         #controls {
             position: absolute;
             top: 20px;
             right: 20px;
             background: rgba(255, 255, 255, 0.95);
             padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
             z-index: 1000;
             width: 300px;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0,0,0,0.05);
         }
-        h2 { margin-top: 0; font-size: 1.2rem; color: #333; border-bottom: 2px solid #ff5252; padding-bottom: 10px;}
+        h2 { margin-top: 0; font-size: 1.2rem; color: #333; border-bottom: 3px solid #ff5252; padding-bottom: 10px; margin-bottom: 15px;}
+        
         .control-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555;}
-        input[type="range"] { width: 100%; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #444; font-size: 0.95rem;}
+        input[type="range"] { width: 100%; cursor: pointer; }
         
         .checkbox-group {
             display: flex;
             align-items: center;
-            background: #f0f4f8;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
+            background: #eef2f5;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            cursor: pointer;
         }
-        .checkbox-group input { margin-right: 10px; transform: scale(1.2); }
+        .checkbox-group:hover { background: #e3e8ec; }
+        .checkbox-group input { margin-right: 12px; transform: scale(1.3); cursor: pointer; }
         .checkbox-group label { margin-bottom: 0; cursor: pointer; }
 
         #circle-controls-wrapper { transition: opacity 0.3s, filter 0.3s; }
@@ -48,24 +52,25 @@
             background-color: #ff5252;
             color: white;
             border: none;
-            padding: 12px 20px;
+            padding: 14px 20px;
             width: 100%;
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: bold;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(255, 82, 82, 0.3);
         }
-        button:hover { background-color: #e04040; }
+        button:hover { background-color: #ff3333; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(255, 82, 82, 0.4); }
+        button:active { transform: translateY(0); }
         
         #result-display {
             margin-top: 15px;
-            padding-top: 10px;
+            padding-top: 15px;
             border-top: 1px solid #eee;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: #555;
             line-height: 1.6;
-            word-break: break-all;
         }
         a.gmap-link {
             color: #d93025;
@@ -73,6 +78,9 @@
             font-weight: bold;
             display: inline-block;
             margin-top: 5px;
+            padding: 5px 10px;
+            background: #fff0f0;
+            border-radius: 4px;
         }
         .tip { font-size: 0.8rem; color: #888; margin-bottom: 5px; }
     </style>
@@ -84,7 +92,7 @@
         
         <div class="checkbox-group control-group">
             <input type="checkbox" id="japan-wide-check">
-            <label for="japan-wide-check">🗾 挑戰全日本範圍！(隨機)</label>
+            <label for="japan-wide-check">🗾 挑戰全日本範圍！</label>
         </div>
 
         <div id="circle-controls-wrapper">
@@ -97,7 +105,7 @@
         
         <button onclick="throwDart()">🎯 射出飛鏢！</button>
         
-        <div id="result-display">準備好開始你的日本冒險了嗎？</div>
+        <div id="result-display">準備好開始你的冒險了嗎？</div>
     </div>
 
     <div id="map"></div>
@@ -105,12 +113,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
         // 1. 初始化地圖
-        // 確保地圖物件在 DOM 載入後正確建立
+        // 將視角稍微往右移，讓控制面板不要擋住日本中間
         const map = L.map('map').setView([38.0, 137.0], 5);
 
-        // 使用 HTTPS 的 OSM 圖資
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
+        // --- 關鍵修改：更換為 CartoDB Voyager 圖資 (速度快、旅遊風格) ---
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
         }).addTo(map);
 
         // 2. 變數與 UI
@@ -142,12 +152,12 @@
                 circleControlsWrapper.classList.add('disabled-controls');
                 map.removeLayer(rangeCircle);
                 map.removeLayer(centerMarker);
-                map.flyTo([38.0, 137.0], 5);
+                map.flyTo([36.0, 138.0], 5, {duration: 1.5}); // 視野拉回全日本
             } else {
                 circleControlsWrapper.classList.remove('disabled-controls');
                 rangeCircle.addTo(map);
                 centerMarker.addTo(map);
-                map.flyTo([centerLat, centerLng], 8);
+                map.flyTo([centerLat, centerLng], 8, {duration: 1.5});
             }
         }
 
@@ -167,7 +177,7 @@
         // 5. 射飛鏢邏輯
         function throwDart() {
             if (resultMarker) map.removeLayer(resultMarker);
-            document.getElementById('result-display').innerHTML = "🚀 飛鏢飛行中...";
+            document.getElementById('result-display').innerHTML = "🚀 飛鏢飛行中...計算落點...";
 
             let targetLat, targetLng, resultMsgHtml;
             const isJapanWide = japanWideCheck.checked;
@@ -202,18 +212,27 @@
                 });
 
                 resultMarker = L.marker([targetLat, targetLng], {icon: redIcon}).addTo(map);
-                const targetZoom = isJapanWide ? 9 : 11;
+                
+                // 根據模式決定縮放層級
+                const targetZoom = isJapanWide ? 10 : 12; 
                 map.flyTo([targetLat, targetLng], targetZoom, { animate: true, duration: 1.5 });
 
-                // 修正後的 Google Maps 連結 (使用 HTTPS 和正確參數)
-                const gmapUrl = `https://www.google.com/maps?q=${targetLat},${targetLng}`;
+                // Google Maps
+                const gmapUrl = `https://www.google.com/maps/search/?api=1&query=${targetLat},${targetLng}`;
                 
-                const popupContent = `<b>命中！</b><br><a href="${gmapUrl}" target="_blank" class="gmap-link">在 Google Maps 開啟</a>`;
+                const popupContent = `
+                    <div style="text-align:center;">
+                        <b style="font-size:1.1em; color:#d93025;">🎯 命中地點！</b><br>
+                        <span style="font-size:0.9em; color:#666;">${targetLat.toFixed(4)}, ${targetLng.toFixed(4)}</span><br>
+                        <a href="${gmapUrl}" target="_blank" class="gmap-link" style="color:white; background:#d93025; margin-top:8px;">在 Google Maps 開啟</a>
+                    </div>
+                `;
                 resultMarker.bindPopup(popupContent).openPopup();
 
                 document.getElementById('result-display').innerHTML = 
-                    `${resultMsgHtml}<br>📍 <a href="${gmapUrl}" target="_blank" class="gmap-link">在 Google Maps 查看結果</a>`;
-            }, 500);
+                    `${resultMsgHtml}<br>📍 座標: ${targetLat.toFixed(3)}, ${targetLng.toFixed(3)}<br>` + 
+                    `<a href="${gmapUrl}" target="_blank" class="gmap-link">🗺️ 前往 Google Maps</a>`;
+            }, 600);
         }
     </script>
 </body>
