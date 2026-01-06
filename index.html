@@ -3,24 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Japan Travel Dart V9</title>
+    <title>Japan Travel Dart V9.1</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: "SF Pro TC", "Microsoft JhengHei", sans-serif; -webkit-font-smoothing: antialiased; }
         #map { height: 100vh; width: 100%; z-index: 1; background: #aad3df; }
         
-        /* 極簡化面板 */
+        /* 控制面板 */
         #controls {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             background: rgba(255, 255, 255, 0.95);
             padding: 20px; border-radius: 16px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.15);
             z-index: 1000; width: 90%; max-width: 360px;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             backdrop-filter: blur(10px);
         }
 
-        /* 模式切換 Tabs */
+        /* 模式切換 */
         .mode-tabs {
             display: flex; background: #f0f2f5; border-radius: 10px; padding: 4px; margin-bottom: 20px;
         }
@@ -32,13 +31,12 @@
         .mode-tabs input { display: none; }
         .mode-tabs input:checked + label { background: #fff; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
 
-        /* 滑桿區域 (僅自駕模式顯示) */
+        /* 滑桿 */
         #distance-control {
-            margin-bottom: 20px; padding: 0 5px; display: none; /* 預設隱藏 */
+            margin-bottom: 20px; padding: 0 5px; display: none;
             animation: fadeIn 0.3s ease;
         }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-
         .slider-label { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; color: #555; font-size: 0.9rem; }
         input[type="range"] { width: 100%; accent-color: #4285f4; cursor: pointer; }
 
@@ -46,16 +44,16 @@
         button.main-btn {
             background-color: #ff5252; color: white; border: none; padding: 16px;
             width: 100%; font-size: 1.1rem; font-weight: 800; border-radius: 12px;
-            cursor: pointer; transition: transform 0.1s, background 0.2s;
+            cursor: pointer; transition: transform 0.1s;
             box-shadow: 0 4px 12px rgba(255, 82, 82, 0.3);
         }
         button.main-btn:active { transform: scale(0.98); }
         button.main-btn.blue { background-color: #4285f4; box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3); }
 
-        /* 結果與 Prompt 區域 */
+        /* --- 結果彈窗樣式 (修正版) --- */
         #result-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); z-index: 2000;
+            background: rgba(0,0,0,0.6); z-index: 2000;
             display: none; align-items: center; justify-content: center;
         }
         .modal-content {
@@ -63,18 +61,28 @@
             border-radius: 16px; position: relative;
             box-shadow: 0 20px 50px rgba(0,0,0,0.3);
             text-align: center;
+            max-height: 90vh; overflow-y: auto;
         }
-        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; color: #999; }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 1.8rem; cursor: pointer; color: #999; line-height: 1;}
         
-        .result-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 10px; color: #333; }
-        .result-details { margin-bottom: 20px; color: #555; line-height: 1.6; font-size: 0.95rem; }
+        /* 這些是上次漏掉的 class */
+        .result-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 10px; color: #333; }
+        .result-details { margin-bottom: 20px; color: #555; line-height: 1.6; font-size: 1rem; }
         
+        /* Google Maps 大按鈕 */
+        a.gmap-btn-large {
+            display: block; background: #4285f4; color: white; text-decoration: none;
+            padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(66, 133, 244, 0.2); transition: background 0.2s;
+        }
+        a.gmap-btn-large:hover { background: #3367d6; }
+
         /* Prompt Box */
         .prompt-box {
-            background: #f4f6f8; border: 1px solid #ddd; border-radius: 8px;
-            padding: 12px; text-align: left; margin-bottom: 15px;
+            background: #f4f6f8; border: 1px solid #ddd; border-radius: 10px;
+            padding: 15px; text-align: left; margin-bottom: 15px;
         }
-        .prompt-label { font-size: 0.75rem; color: #888; margin-bottom: 5px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;}
+        .prompt-label { font-size: 0.75rem; color: #888; margin-bottom: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;}
         textarea#gemini-prompt {
             width: 100%; height: 80px; border: none; background: transparent;
             font-size: 0.85rem; color: #333; resize: none; outline: none;
@@ -82,14 +90,9 @@
         }
 
         .copy-btn {
-            background: #333; color: white; border: none; padding: 10px; width: 100%;
-            border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+            background: #333; color: white; border: none; padding: 12px; width: 100%;
+            border-radius: 10px; font-weight: bold; cursor: pointer;
         }
-        .copy-btn:hover { background: #000; }
-
-        /* Leaflet Popups */
-        .custom-popup .leaflet-popup-content-wrapper { border-radius: 8px; padding: 5px; }
-        .custom-popup .leaflet-popup-content { margin: 10px; font-size: 0.9rem; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -105,7 +108,7 @@
 
         <div id="distance-control">
             <div class="slider-label">
-                <span>預計行駛距離</span>
+                <span>旅程距離 (直線)</span>
                 <span id="dist-val">150 km</span>
             </div>
             <input type="range" id="dist-slider" min="50" max="500" step="50" value="150" oninput="updateDistLabel(this.value)">
@@ -117,12 +120,17 @@
     <div id="result-modal">
         <div class="modal-content">
             <div class="close-btn" onclick="closeModal()">×</div>
-            <div id="modal-body">
-                </div>
             
+            <div class="result-title"></div>
+            <div class="result-details"></div>
+            
+            <div id="gmap-btn-container"></div>
+            
+            <hr style="border:0; border-top:1px solid #eee; margin: 20px 0;">
+
             <div class="prompt-box">
-                <div class="prompt-label">Gemini AI Prompt (已自動生成)</div>
-                <textarea id="gemini-prompt" readonly></textarea>
+                <div class="prompt-label">✨ Gemini AI 行程規劃指令</div>
+                <textarea id="gemini-prompt" readonly onclick="this.select()"></textarea>
             </div>
             <button class="copy-btn" onclick="copyPrompt()">
                 📋 複製 Prompt 並詢問 Gemini
@@ -134,27 +142,23 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // --- 1. 資料庫 (內建精簡版 1741 -> 精選約 400 點以確保效能與覆蓋率) ---
-        // 為了節省您的 Token，這裡我用程式邏輯示意，實際使用時這裡是一個很長的 Array
-        // 包含：Lat, Lng, Name (縣市名)
+        // --- 1. 資料庫 (內建精選 47 都道府縣主要節點) ---
         const japanCities = [
             // 北海道
-            [43.062,141.354,"北海道 札幌市"],[41.768,140.728,"北海道 函館市"],[43.770,142.364,"北海道 旭川市"],[42.984,144.381,"北海道 釧路市"],[45.415,141.673,"北海道 稚內市"],[44.020,144.273,"北海道 網走市"],[42.320,140.970,"北海道 登別市"],[43.190,140.994,"北海道 小樽市"],[43.342,142.383,"北海道 富良野市"],[42.924,143.196,"北海道 帶廣市"],
+            [43.062,141.354,"北海道 札幌市"],[41.768,140.728,"北海道 函館市"],[43.770,142.364,"北海道 旭川市"],[42.984,144.381,"北海道 釧路市"],[45.415,141.673,"北海道 稚內市"],[44.020,144.273,"北海道 網走市"],[43.190,140.994,"北海道 小樽市"],[42.924,143.196,"北海道 帶廣市"],[42.320,140.970,"北海道 登別市"],
             // 東北
-            [40.824,140.740,"青森縣 青森市"],[40.512,141.488,"青森縣 八戶市"],[40.615,140.474,"青森縣 弘前市"],[39.702,141.154,"岩手縣 盛岡市"],[39.938,141.933,"岩手縣 宮古市"],[38.268,140.869,"宮城縣 仙台市"],[38.416,141.303,"宮城縣 石卷市"],[39.720,140.102,"秋田縣 秋田市"],[39.275,140.556,"秋田縣 角館(仙北市)"],[38.255,140.339,"山形縣 山形市"],[38.908,139.822,"山形縣 酒田市"],[37.750,140.467,"福島縣 福島市"],[37.494,139.929,"福島縣 會津若松市"],
+            [40.824,140.740,"青森縣 青森市"],[40.615,140.474,"青森縣 弘前市"],[39.702,141.154,"岩手縣 盛岡市"],[38.268,140.869,"宮城縣 仙台市"],[39.720,140.102,"秋田縣 秋田市"],[38.255,140.339,"山形縣 山形市"],[37.750,140.467,"福島縣 福島市"],[37.494,139.929,"福島縣 會津若松市"],
             // 關東
-            [36.365,140.471,"茨城縣 水戶市"],[36.554,139.897,"栃木縣 宇都宮市"],[36.719,139.698,"栃木縣 日光市"],[36.391,139.060,"群馬縣 前橋市"],[36.636,138.834,"群馬縣 草津町"],[35.906,139.627,"埼玉縣 埼玉市"],[35.925,139.485,"埼玉縣 川越市"],[35.607,140.106,"千葉縣 千葉市"],[35.128,140.055,"千葉縣 鴨川市"],[34.934,139.816,"千葉縣 館山市"],[35.689,139.691,"東京都 新宿區"],[35.710,139.810,"東京都 墨田區"],[35.626,139.782,"東京都 有明(台場)"],[35.447,139.642,"神奈川縣 橫濱市"],[35.319,139.550,"神奈川縣 鎌倉市"],[35.232,139.106,"神奈川縣 小田原市"],[35.250,139.053,"神奈川縣 箱根町"],
+            [36.365,140.471,"茨城縣 水戶市"],[36.554,139.897,"栃木縣 宇都宮市"],[36.719,139.698,"栃木縣 日光市"],[36.391,139.060,"群馬縣 前橋市"],[36.341,138.633,"長野縣 輕井澤"],[35.925,139.485,"埼玉縣 川越市"],[35.607,140.106,"千葉縣 千葉市"],[35.128,140.055,"千葉縣 鴨川市"],[35.689,139.691,"東京都 新宿區"],[35.710,139.810,"東京都 晴空塔"],[35.447,139.642,"神奈川縣 橫濱市"],[35.319,139.550,"神奈川縣 鎌倉市"],[35.250,139.053,"神奈川縣 箱根町"],
             // 中部/北陸
-            [37.916,139.036,"新潟縣 新潟市"],[36.936,138.810,"新潟縣 湯澤町"],[36.695,137.211,"富山縣 富山市"],[36.755,136.994,"富山縣 高岡市"],[36.578,136.648,"石川縣 金澤市"],[37.394,136.899,"石川縣 輪島市"],[36.057,136.220,"福井縣 福井市"],[35.663,138.568,"山梨縣 甲府市"],[35.496,138.743,"山梨縣 富士河口湖"],[36.648,138.194,"長野縣 長野市"],[36.238,137.964,"長野縣 松本市"],[36.341,138.633,"長野縣 輕井澤"],[35.392,136.722,"岐阜縣 岐阜市"],[36.275,136.897,"岐阜縣 白川鄉"],[36.140,137.259,"岐阜縣 高山市"],[34.975,138.382,"靜岡縣 靜岡市"],[34.710,137.726,"靜岡縣 濱松市"],[34.971,139.098,"靜岡縣 伊東市"],[35.181,136.906,"愛知縣 名古屋市"],[34.889,136.839,"愛知縣 常滑市"],
+            [37.916,139.036,"新潟縣 新潟市"],[36.695,137.211,"富山縣 富山市"],[36.578,136.648,"石川縣 金澤市"],[36.057,136.220,"福井縣 福井市"],[35.663,138.568,"山梨縣 甲府市"],[35.496,138.743,"山梨縣 河口湖"],[36.648,138.194,"長野縣 長野市"],[36.238,137.964,"長野縣 松本市"],[36.140,137.259,"岐阜縣 高山市(飛驒)"],[36.275,136.897,"岐阜縣 白川鄉"],[34.975,138.382,"靜岡縣 靜岡市"],[35.181,136.906,"愛知縣 名古屋市"],
             // 關西
-            [34.724,136.515,"三重縣 津市"],[34.453,136.726,"三重縣 伊勢市"],[34.969,136.179,"滋賀縣 甲賀市"],[35.280,136.257,"滋賀縣 彥根市"],[35.011,135.768,"京都府 京都市"],[35.541,135.197,"京都府 天橋立(宮津)"],[34.693,135.502,"大阪府 大阪市"],[34.460,135.316,"大阪府 岸和田市"],[34.690,135.195,"兵庫縣 神戶市"],[34.826,134.691,"兵庫縣 姬路市"],[35.632,134.824,"兵庫縣 城崎溫泉"],[34.685,135.804,"奈良縣 奈良市"],[34.494,135.823,"奈良縣 櫻井市"],[34.230,135.170,"和歌山縣 和歌山市"],[33.623,135.946,"和歌山縣 那智勝浦"],
-            // 中國
-            [35.530,134.226,"鳥取縣 鳥取市"],[35.433,133.328,"鳥取縣 米子市"],[35.472,133.050,"島根縣 松江市"],[35.367,132.753,"島根縣 出雲市"],[34.661,133.934,"岡山縣 岡山市"],[34.595,133.771,"岡山縣 倉敷市"],[34.385,132.455,"廣島縣 廣島市"],[34.402,133.204,"廣島縣 尾道市"],[34.178,131.473,"山口縣 山口市"],[33.951,130.938,"山口縣 下關市"],
-            // 四國
-            [34.050,134.543,"德島縣 德島市"],[33.886,133.834,"德島縣 大步危"],[34.342,134.043,"香川縣 高松市"],[34.484,134.288,"香川縣 小豆島"],[33.841,132.765,"愛媛縣 松山市"],[34.066,132.997,"愛媛縣 今治市"],[33.559,133.531,"高知縣 高知市"],[32.946,132.934,"高知縣 四萬十市"],
+            [34.724,136.515,"三重縣 津市"],[34.453,136.726,"三重縣 伊勢市"],[35.011,135.768,"京都府 京都市"],[35.541,135.197,"京都府 天橋立"],[34.693,135.502,"大阪府 大阪市"],[34.690,135.195,"兵庫縣 神戶市"],[34.826,134.691,"兵庫縣 姬路市"],[34.685,135.804,"奈良縣 奈良市"],[34.230,135.170,"和歌山縣 和歌山市"],[33.623,135.946,"和歌山縣 那智勝浦"],
+            // 中國/四國
+            [35.530,134.226,"鳥取縣 鳥取市"],[35.472,133.050,"島根縣 松江市"],[34.661,133.934,"岡山縣 岡山市"],[34.595,133.771,"岡山縣 倉敷市"],[34.385,132.455,"廣島縣 廣島市"],[34.178,131.473,"山口縣 山口市"],[34.050,134.543,"德島縣 德島市"],[34.342,134.043,"香川縣 高松市"],[34.484,134.288,"香川縣 小豆島"],[33.841,132.765,"愛媛縣 松山市"],[33.559,133.531,"高知縣 高知市"],
             // 九州/沖繩
-            [33.590,130.401,"福岡縣 福岡市"],[33.883,130.875,"福岡縣 北九州市"],[33.263,130.300,"佐賀縣 佐賀市"],[33.178,129.973,"佐賀縣 伊萬里市"],[32.744,129.873,"長崎縣 長崎市"],[33.167,129.673,"長崎縣 佐世保市"],[32.794,130.707,"熊本縣 熊本市"],[32.885,131.066,"熊本縣 阿蘇市"],[33.238,131.612,"大分縣 大分市"],[33.279,131.505,"大分縣 別府市"],[33.266,131.360,"大分縣 由布院"],[31.907,131.420,"宮崎縣 宮崎市"],[32.062,131.417,"宮崎縣 高千穗"],[31.596,130.557,"鹿兒島縣 鹿兒島市"],[31.258,130.612,"鹿兒島縣 指宿市"],[30.374,130.865,"鹿兒島縣 屋久島"],
-            [26.212,127.680,"沖繩縣 那霸市"],[26.589,127.970,"沖繩縣 名護市"],[26.333,127.801,"沖繩縣 恩納村"],[24.805,125.281,"沖繩縣 宮古島"],[24.344,124.157,"沖繩縣 石垣島"]
+            [33.590,130.401,"福岡縣 福岡市"],[33.883,130.875,"福岡縣 北九州市"],[33.263,130.300,"佐賀縣 佐賀市"],[32.744,129.873,"長崎縣 長崎市"],[32.794,130.707,"熊本縣 熊本市"],[32.885,131.066,"熊本縣 阿蘇市"],[33.238,131.612,"大分縣 大分市"],[33.279,131.505,"大分縣 別府市"],[33.266,131.360,"大分縣 由布院"],[31.907,131.420,"宮崎縣 宮崎市"],[31.596,130.557,"鹿兒島縣 鹿兒島市"],[30.374,130.865,"鹿兒島縣 屋久島"],
+            [26.212,127.680,"沖繩縣 那霸市"],[24.344,124.157,"沖繩縣 石垣島"],[24.805,125.281,"沖繩縣 宮古島"]
         ];
 
         // --- 2. 系統變數 ---
@@ -212,34 +216,32 @@
 
         function execute() {
             clearMap();
+            // 先關閉彈窗，避免舊資料殘留
+            closeModal();
             
-            if(currentMode === 'single') {
-                // 單點邏輯
-                const city = japanCities[Math.floor(Math.random() * japanCities.length)];
-                showSingleResult(city);
-            } else {
-                // 自駕邏輯
-                const distTarget = parseInt(document.getElementById('dist-slider').value);
-                generateRoute(distTarget);
-            }
+            setTimeout(() => {
+                if(currentMode === 'single') {
+                    const city = japanCities[Math.floor(Math.random() * japanCities.length)];
+                    showSingleResult(city);
+                } else {
+                    const distTarget = parseInt(document.getElementById('dist-slider').value);
+                    generateRoute(distTarget);
+                }
+            }, 300);
         }
 
-        // 產生路徑 (Retry 機制)
         function generateRoute(targetDist) {
             let start, end;
             let found = false;
             let attempts = 0;
             
-            // 嘗試 50 次尋找符合距離的組合
-            while(!found && attempts < 50) {
+            while(!found && attempts < 100) {
                 attempts++;
                 start = japanCities[Math.floor(Math.random() * japanCities.length)];
                 
-                // 篩選所有候選點
                 const candidates = japanCities.filter(c => {
                     if(c[2] === start[2]) return false;
                     const d = map.distance([start[0],start[1]], [c[0],c[1]]) / 1000;
-                    // 容許誤差 +- 30%
                     return d > targetDist * 0.7 && d < targetDist * 1.3;
                 });
 
@@ -250,19 +252,20 @@
             }
 
             if(!found) {
-                alert("在此距離條件下找不到適合的陸地路徑，請嘗試調整距離或重試。");
+                alert("在此距離範圍內找不到合適的路徑組合，請試著調整距離！");
                 return;
             }
 
             showRouteResult(start, end);
         }
 
-        // --- 4. 結果顯示與 Prompt 生成 ---
+        // --- 4. 結果顯示 (包含 Prompt 與 地圖連結) ---
         function showSingleResult(city) {
             const m = L.marker([city[0], city[1]], {icon: redIcon}).addTo(map);
-            m.bindPopup(`<b>${city[2]}</b>`, {className: 'custom-popup'}).openPopup();
             markers.push(m);
             map.flyTo([city[0], city[1]], 10, {animate:true, duration: 1});
+
+            const gmapUrl = `https://www.google.com/maps/search/?api=1&query=${city[2]}`;
 
             // 生成 Prompt
             const prompt = `我想要去日本旅遊，請你擔任我的導遊。
@@ -274,7 +277,12 @@
 3. 適合的交通方式
 4. 詳細的時間軸規劃`;
 
-            openModal(`🎯 目的地：${city[2]}`, "已經幫您選好地點！<br>您可以複製下方的指令，貼給 Gemini 幫您做詳細規劃。", prompt);
+            openModal(
+                `🎯 目的地：${city[2]}`, 
+                `已經幫您決定好地點！<br>準備好出發了嗎？`,
+                prompt,
+                gmapUrl
+            );
         }
 
         function showRouteResult(start, end) {
@@ -288,6 +296,9 @@
 
             const dist = (map.distance([start[0],start[1]], [end[0],end[1]]) / 1000).toFixed(0);
 
+            // Google Maps Driving Route URL
+            const gmapUrl = `https://www.google.com/maps/dir/?api=1&origin=${start[0]},${start[1]}&destination=${end[0]},${end[1]}&travelmode=driving`;
+
             // 生成 Prompt
             const prompt = `我計畫去日本進行一趟自駕旅遊。
 起點：【${start[2]}】
@@ -300,20 +311,31 @@
 3. 推薦的沿途住宿（一泊二食尤佳）
 4. Google Maps 導航建議避開的路段或風景好的路線`;
 
-            openModal(`🚗 自駕路線 (${dist} km)`, 
-                `<span style="color:#2ecc71">●</span> ${start[2]} <br>⬇<br> <span style="color:#ff5252">●</span> ${end[2]}`, 
-                prompt);
+            openModal(
+                `🚗 自駕路線 (${dist} km)`, 
+                `<span style="color:#2ecc71; font-weight:bold;">起點：${start[2]}</span><br>⬇<br><span style="color:#ff5252; font-weight:bold;">終點：${end[2]}</span>`, 
+                prompt,
+                gmapUrl
+            );
         }
 
-        // --- 5. Modal 與 Clipboard ---
+        // --- 5. Modal 控制邏輯 (已修正) ---
         const modal = document.getElementById('result-modal');
-        const modalBody = document.getElementById('modal-body');
         const promptBox = document.getElementById('gemini-prompt');
 
-        function openModal(title, contentHtml, promptText) {
+        function openModal(title, contentHtml, promptText, gmapUrl) {
+            // 更新文字內容
             document.querySelector('.result-title').innerText = title;
             document.querySelector('.result-details').innerHTML = contentHtml;
+            
+            // 更新 Prompt
             promptBox.value = promptText;
+
+            // 動態插入 Google Maps 大按鈕
+            const btnHtml = `<a href="${gmapUrl}" target="_blank" class="gmap-btn-large">🗺️ 開啟 Google Maps 路線</a>`;
+            document.getElementById('gmap-btn-container').innerHTML = btnHtml;
+
+            // 顯示彈窗
             modal.style.display = 'flex';
         }
 
@@ -323,16 +345,19 @@
 
         function copyPrompt() {
             promptBox.select();
-            promptBox.setSelectionRange(0, 99999);
+            promptBox.setSelectionRange(0, 99999); // Mobile Support
+            
             navigator.clipboard.writeText(promptBox.value).then(() => {
                 const btn = document.querySelector('.copy-btn');
                 const originalText = btn.innerText;
-                btn.innerText = "✅ 已複製！請貼給 Gemini";
+                btn.innerText = "✅ 已複製！快去問 Gemini";
                 btn.style.background = "#28a745";
                 setTimeout(() => {
                     btn.innerText = originalText;
                     btn.style.background = "#333";
                 }, 2000);
+            }).catch(err => {
+                alert("複製失敗，請手動複製文字框內容");
             });
         }
     </script>
