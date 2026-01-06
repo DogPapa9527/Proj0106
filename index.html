@@ -3,143 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日本旅遊射飛鏢 - 手機優化版</title>
+    <title>日本自駕遊 - 隨機與規劃</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; }
-        /* 避免灰底，設定一個海的顏色當預設背景 */
         #map { height: 100vh; width: 100%; z-index: 1; background: #aad3df; }
         
+        /* 控制面板 */
         #controls {
             position: absolute;
             top: 20px;
             right: 20px;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.98);
             padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             z-index: 1000;
-            width: 300px;
-            /* 加入過渡動畫 */
+            width: 320px;
             transition: all 0.3s ease;
-            max-height: 80vh; /* 防止太長超出螢幕 */
-            overflow: hidden;
+            max-height: 85vh;
+            overflow-y: auto;
         }
 
-        /* 縮小模式的樣式 */
-        #controls.minimized {
-            width: 160px; /* 縮小寬度 */
-            padding-bottom: 5px;
-        }
+        #controls.minimized { width: 180px; padding-bottom: 5px; }
+        #controls.minimized #panel-content { display: none; }
 
-        /* 標題列與按鈕容器 */
         .header-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             border-bottom: 2px solid #ff5252;
-            padding-bottom: 5px;
+            padding-bottom: 8px;
         }
-
         h2 { margin: 0; font-size: 1.1rem; color: #333; }
-        
-        /* 縮放切換按鈕 */
         #toggle-btn {
-            background: none;
-            border: none;
-            font-size: 1.2rem;
-            color: #555;
-            cursor: pointer;
-            padding: 0 5px;
-            width: auto;
-            line-height: 1;
+            background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #555;
         }
 
-        /* 包住內容的容器，用於隱藏 */
-        #panel-content {
-            transition: opacity 0.2s ease;
-        }
-
-        /* 當面板有 .minimized class 時，隱藏內容 */
-        #controls.minimized #panel-content {
-            display: none;
-            opacity: 0;
-        }
-
-        /* 其他原有樣式 */
-        .control-group { margin-bottom: 15px; }
-        .checkbox-group {
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 5px;
+        /* 模式切換按鈕 (Radio Style) */
+        .mode-switcher {
             display: flex;
-            align-items: center;
+            background: #eee;
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 15px;
+        }
+        .mode-switcher label {
+            flex: 1;
+            text-align: center;
+            padding: 8px 0;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .mode-switcher input { display: none; }
+        /* 選中狀態 */
+        .mode-switcher input:checked + label {
+            background: #fff;
+            color: #ff5252;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .control-group { margin-bottom: 15px; }
+        .label-title { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; color: #333; }
+        
+        input[type="range"] { width: 100%; }
+
+        .checkbox-group {
+            background: #f8f9fa; padding: 10px; border-radius: 5px;
+            display: flex; align-items: center;
         }
         .checkbox-group input { margin-right: 10px; transform: scale(1.2); }
-        .checkbox-group label { cursor: pointer; font-weight: bold; font-size: 0.95rem; }
-        
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="range"] { width: 100%; }
-        
-        .disabled { opacity: 0.4; pointer-events: none; }
+        .checkbox-group label { margin: 0; cursor: pointer; font-size: 0.9rem; }
+
+        /* 隱藏/顯示控制 */
+        .hidden { display: none; }
 
         button.action-btn {
             background-color: #ff5252;
             color: white;
             border: none;
-            padding: 12px 20px;
+            padding: 14px;
             width: 100%;
             font-size: 1rem;
             font-weight: bold;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             transition: background 0.2s;
+            box-shadow: 0 4px 6px rgba(255,82,82,0.3);
         }
         button.action-btn:hover { background-color: #d32f2f; }
-        
+        button.action-btn.blue { background-color: #4285f4; box-shadow: 0 4px 6px rgba(66,133,244,0.3); }
+        button.action-btn.blue:hover { background-color: #3367d6; }
+
         #result-display {
-            margin-top: 15px;
-            padding-top: 10px;
-            border-top: 1px solid #eee;
-            font-size: 0.9rem;
-            color: #555;
-            line-height: 1.5;
+            margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee;
+            font-size: 0.9rem; color: #555; line-height: 1.5;
         }
         a.gmap-link {
-            color: #007bff;
-            text-decoration: none;
-            font-weight: bold;
-            display: inline-block;
-            margin-top: 5px;
+            color: white; background: #4285f4; padding: 6px 12px;
+            border-radius: 4px; text-decoration: none; font-weight: bold;
+            display: inline-block; margin-top: 8px; font-size: 0.9rem;
         }
+
+        /* Leaflet Marker CSS Filters (改變顏色) */
+        img.huechange-green { filter: hue-rotate(240deg) brightness(1.2); } /* 變綠色 (起點) */
+        img.huechange-red { filter: hue-rotate(0deg); } /* 紅色 (預設) */
+        
     </style>
 </head>
 <body>
 
     <div id="controls">
         <div class="header-bar">
-            <h2>🇯🇵 日本旅遊射飛鏢</h2>
+            <h2>🇯🇵 日本自駕地圖</h2>
             <button id="toggle-btn" onclick="togglePanel()">_</button>
         </div>
 
         <div id="panel-content">
-            <div class="control-group checkbox-group">
-                <input type="checkbox" id="japan-wide-check">
-                <label for="japan-wide-check">🗾 隨機挑戰全日本 (陸地)</label>
+            <div class="mode-switcher">
+                <input type="radio" id="mode-random" name="mode" value="random" checked onchange="switchMode()">
+                <label for="mode-random">🎯 隨機冒險</label>
+                
+                <input type="radio" id="mode-manual" name="mode" value="manual" onchange="switchMode()">
+                <label for="mode-manual">🚗 自駕規劃</label>
             </div>
 
-            <div id="circle-controls">
-                <div class="control-group">
-                    <label>範圍半徑: <span id="radius-val">100</span> km</label>
-                    <input type="range" id="radius-slider" min="10" max="1000" value="100" step="10">
+            <div id="controls-random">
+                <div class="control-group checkbox-group">
+                    <input type="checkbox" id="japan-wide-check">
+                    <label for="japan-wide-check">🗾 全日本範圍 (陸地)</label>
                 </div>
-                <p style="font-size: 0.8rem; color: #666;">💡 拖曳地圖上的藍色標記來改變中心點</p>
+                <div id="circle-controls">
+                    <div class="control-group">
+                        <span class="label-title">搜尋半徑: <span id="radius-val">100</span> km</span>
+                        <input type="range" id="radius-slider" min="10" max="1000" value="100" step="10">
+                    </div>
+                    <p style="font-size: 0.8rem; color: #666;">💡 拖曳地圖上的 <b style="color:green">綠色標記</b> 設定起點</p>
+                </div>
+                <button class="action-btn" onclick="throwDart()">🎯 幫我決定目的地！</button>
             </div>
 
-            <button class="action-btn" onclick="throwDart()">🎯 射出飛鏢！</button>
+            <div id="controls-manual" class="hidden">
+                <p style="font-size: 0.9rem; color: #555;">請在地圖上拖曳標記：</p>
+                <ul style="padding-left: 20px; font-size: 0.9rem; margin-top:5px;">
+                    <li><b style="color: #2ecc71;">綠色</b>：出發地 (起點)</li>
+                    <li><b style="color: #e74c3c;">紅色</b>：目的地 (終點)</li>
+                </ul>
+                <button class="action-btn blue" onclick="openRoute()">🗺️ 開啟 Google 導航</button>
+            </div>
             
-            <div id="result-display">準備好開始了嗎？</div>
+            <div id="result-display">準備出發！</div>
         </div>
     </div>
 
@@ -149,77 +167,131 @@
     <script>
         // 1. 初始化地圖
         const map = L.map('map').setView([35.6895, 139.6917], 8);
-
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
+            attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // 2. 變數設定
-        let centerLat = 35.6895; // 東京
+        // 2. 全局變數
+        let currentMode = 'random';
+        let startMarker = null; // 起點 (綠)
+        let endMarker = null;   // 終點 (紅)
+        let rangeCircle = null; // 範圍圓圈
+        let routeLine = null;   // 連接線
+
+        let centerLat = 35.6895; // 預設東京
         let centerLng = 139.6917;
         let radiusKm = 100;
-        let resultMarker = null;
 
         // UI 元素
-        const japanWideCheck = document.getElementById('japan-wide-check');
-        const circleControls = document.getElementById('circle-controls');
-        const slider = document.getElementById('radius-slider');
-        const radiusDisplay = document.getElementById('radius-val');
         const controlsPanel = document.getElementById('controls');
         const toggleBtn = document.getElementById('toggle-btn');
+        const japanWideCheck = document.getElementById('japan-wide-check');
+        const slider = document.getElementById('radius-slider');
+        const radiusDisplay = document.getElementById('radius-val');
 
-        // --- 新增：面板縮放功能 ---
-        function togglePanel() {
-            controlsPanel.classList.toggle('minimized');
+        // 3. 圖標樣式 (使用 CSS Filter 變色)
+        const greenIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+        });
+
+        const redIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+        });
+
+        // 4. 初始化功能
+        initMapElements();
+
+        function initMapElements() {
+            // 建立起點 (共用)
+            startMarker = L.marker([centerLat, centerLng], {draggable: true, icon: greenIcon}).addTo(map);
+            startMarker.bindPopup("<b>🏁 起點 (出發地)</b><br>拖曳我來改變位置").openPopup();
+
+            // 建立圓圈 (隨機模式用)
+            rangeCircle = L.circle([centerLat, centerLng], {
+                color: '#3388ff', fillColor: '#3388ff', fillOpacity: 0.1, radius: radiusKm * 1000
+            }).addTo(map);
+
+            // 建立終點 (規劃模式用，預設隱藏)
+            // 預設終點放在起點旁邊一點點
+            endMarker = L.marker([centerLat + 0.5, centerLng + 0.5], {draggable: true, icon: redIcon});
             
-            // 改變按鈕圖示
-            if (controlsPanel.classList.contains('minimized')) {
-                toggleBtn.innerText = '☐'; // 展開符號
+            // 建立連線 (預設隱藏)
+            routeLine = L.polyline([], {color: '#4285f4', weight: 4, opacity: 0.7, dashArray: '10, 10'});
+
+            // 事件監聽
+            startMarker.on('drag', (e) => {
+                const pos = e.target.getLatLng();
+                centerLat = pos.lat;
+                centerLng = pos.lng;
+                rangeCircle.setLatLng(pos);
+                updateRouteLine();
+            });
+
+            endMarker.on('drag', () => {
+                updateRouteLine();
+            });
+        }
+
+        // 5. 模式切換邏輯
+        function switchMode() {
+            const radios = document.getElementsByName('mode');
+            for(let r of radios) { if(r.checked) currentMode = r.value; }
+
+            const divRandom = document.getElementById('controls-random');
+            const divManual = document.getElementById('controls-manual');
+
+            if (currentMode === 'random') {
+                // --- 切換到 隨機模式 ---
+                divRandom.classList.remove('hidden');
+                divManual.classList.add('hidden');
+                
+                // 顯示圓圈，隱藏手動終點
+                if (!japanWideCheck.checked) rangeCircle.addTo(map);
+                map.removeLayer(endMarker);
+                map.removeLayer(routeLine);
+                document.getElementById('result-display').innerHTML = "準備射飛鏢...";
             } else {
-                toggleBtn.innerText = '_'; // 縮小符號
+                // --- 切換到 規劃模式 ---
+                divRandom.classList.add('hidden');
+                divManual.classList.remove('hidden');
+                
+                // 隱藏圓圈，顯示手動終點與連線
+                map.removeLayer(rangeCircle);
+                endMarker.addTo(map).bindPopup("<b>🏁 終點 (目的地)</b>").openPopup();
+                routeLine.addTo(map);
+                
+                // 自動縮放讓起終點都在畫面內
+                const group = new L.featureGroup([startMarker, endMarker]);
+                map.fitBounds(group.getBounds().pad(0.2));
+                
+                updateRouteLine();
+                document.getElementById('result-display').innerHTML = "拖曳標記來規劃路線";
             }
         }
 
-        // 3. 建立圓形模式元件
-        const centerMarker = L.marker([centerLat, centerLng], {draggable: true}).addTo(map);
-        centerMarker.bindPopup("出發中心點 (拖曳我)").openPopup();
+        // 更新連線與距離顯示 (共用函式)
+        function updateRouteLine() {
+            if (currentMode === 'manual' || map.hasLayer(endMarker)) {
+                const startLatLng = startMarker.getLatLng();
+                const endLatLng = endMarker.getLatLng();
+                
+                // 畫線
+                routeLine.setLatLngs([startLatLng, endLatLng]);
+                if (currentMode === 'manual') routeLine.addTo(map);
 
-        const rangeCircle = L.circle([centerLat, centerLng], {
-            color: '#3388ff',
-            fillColor: '#3388ff',
-            fillOpacity: 0.1,
-            radius: radiusKm * 1000
-        }).addTo(map);
-
-        // 4. 事件監聽
-        japanWideCheck.onchange = function() {
-            if (this.checked) {
-                circleControls.classList.add('disabled');
-                map.removeLayer(rangeCircle);
-                map.removeLayer(centerMarker);
-                map.setView([37.0, 138.0], 5);
-            } else {
-                circleControls.classList.remove('disabled');
-                rangeCircle.addTo(map);
-                centerMarker.addTo(map);
-                map.setView([centerLat, centerLng], 8);
+                // 計算距離
+                const dist = (startLatLng.distanceTo(endLatLng) / 1000).toFixed(1);
+                document.getElementById('result-display').innerHTML = 
+                    `📏 直線距離: <b>${dist} km</b><br>` +
+                    `<span style="font-size:0.8rem; color:#888;">(點擊按鈕查看實際行車路線)</span>`;
             }
-        };
+        }
 
-        centerMarker.on('drag', function(e) {
-            const newPos = e.target.getLatLng();
-            centerLat = newPos.lat;
-            centerLng = newPos.lng;
-            rangeCircle.setLatLng(newPos);
-        });
-
-        slider.oninput = function() {
-            radiusKm = parseInt(this.value);
-            radiusDisplay.innerText = radiusKm;
-            rangeCircle.setRadius(radiusKm * 1000);
-        };
-
-        // 5. 核心邏輯：避開海洋 (Smart Zones)
+        // 6. 隨機模式邏輯 (含區域避海算法)
         const japanZones = [
             { name: "北海道", minLat: 41.5, maxLat: 45.3, minLng: 140.0, maxLng: 145.5, weight: 2 },
             { name: "東北地區", minLat: 37.0, maxLat: 41.5, minLng: 139.5, maxLng: 141.5, weight: 2 },
@@ -232,75 +304,95 @@
         function getRandomPointInJapan() {
             const totalWeight = japanZones.reduce((sum, zone) => sum + zone.weight, 0);
             let random = Math.random() * totalWeight;
-            
             let selectedZone = japanZones[0];
             for (let zone of japanZones) {
-                if (random < zone.weight) {
-                    selectedZone = zone;
-                    break;
-                }
+                if (random < zone.weight) { selectedZone = zone; break; }
                 random -= zone.weight;
             }
-
-            const lat = Math.random() * (selectedZone.maxLat - selectedZone.minLat) + selectedZone.minLat;
-            const lng = Math.random() * (selectedZone.maxLng - selectedZone.minLng) + selectedZone.minLng;
-            
-            return { lat, lng, zoneName: selectedZone.name };
+            return {
+                lat: Math.random() * (selectedZone.maxLat - selectedZone.minLat) + selectedZone.minLat,
+                lng: Math.random() * (selectedZone.maxLng - selectedZone.minLng) + selectedZone.minLng,
+                name: selectedZone.name
+            };
         }
 
-        // 6. 射飛鏢主程式
         function throwDart() {
-            if (resultMarker) map.removeLayer(resultMarker);
+            map.removeLayer(endMarker);
+            map.removeLayer(routeLine);
             document.getElementById('result-display').innerHTML = "🚀 飛鏢飛行中...";
 
-            let targetLat, targetLng;
-            let debugInfo = "";
+            let targetLat, targetLng, infoText;
 
+            // 計算目標點
             if (japanWideCheck.checked) {
                 const point = getRandomPointInJapan();
-                targetLat = point.lat;
-                targetLng = point.lng;
-                debugInfo = `(區域: ${point.zoneName})`;
+                targetLat = point.lat; targetLng = point.lng;
+                infoText = `(區域: ${point.name})`;
             } else {
                 const angle = Math.random() * Math.PI * 2;
                 const distance = Math.sqrt(Math.random()) * radiusKm;
-                const earthRadius = 6371;
-                const deltaLat = (distance * Math.cos(angle) / earthRadius) * (180 / Math.PI);
-                const deltaLng = (distance * Math.sin(angle) / (earthRadius * Math.cos(centerLat * Math.PI / 180))) * (180 / Math.PI);
+                const deltaLat = (distance * Math.cos(angle) / 6371) * (180 / Math.PI);
+                const deltaLng = (distance * Math.sin(angle) / (6371 * Math.cos(centerLat * Math.PI / 180))) * (180 / Math.PI);
                 targetLat = centerLat + deltaLat;
                 targetLng = centerLng + deltaLng;
-                debugInfo = `(距離: ${distance.toFixed(1)} km)`;
+                infoText = `(距離: ${distance.toFixed(1)} km)`;
             }
 
+            // 動畫與結果
             setTimeout(() => {
-                const redIcon = L.icon({
-                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41],
-                    popupAnchor: [1, -34],
-                    shadowSize: [41, 41]
-                });
-
-                resultMarker = L.marker([targetLat, targetLng], {icon: redIcon}).addTo(map);
+                // 設定終點標記位置
+                endMarker.setLatLng([targetLat, targetLng]).addTo(map);
                 
-                map.flyTo([targetLat, targetLng], japanWideCheck.checked ? 10 : 12, {
-                    animate: true,
-                    duration: 1.5
-                });
+                // 畫線 (這就是箭頭功能)
+                routeLine.setLatLngs([startMarker.getLatLng(), [targetLat, targetLng]]).addTo(map);
 
-                // Google Maps 連結
-                const gmapUrl = `https://www.google.com/maps/search/?api=1&query=${targetLat},${targetLng}`;
+                // 縮放地圖包住路徑
+                const group = new L.featureGroup([startMarker, endMarker]);
+                map.fitBounds(group.getBounds().pad(0.2));
 
-                const popupContent = `<b>命中！</b><br><a href="${gmapUrl}" target="_blank" class="gmap-link">在 Google Maps 開啟</a>`;
-                resultMarker.bindPopup(popupContent).openPopup();
+                const gmapUrl = `https://www.google.com/maps/dir/?api=1&origin=${centerLat},${centerLng}&destination=${targetLat},${targetLng}&travelmode=driving`;
+
+                const popupContent = `<b>🎯 命中！</b><br><a href="${gmapUrl}" target="_blank" class="gmap-link">🚗 Google 導航路線</a>`;
+                endMarker.bindPopup(popupContent).openPopup();
 
                 document.getElementById('result-display').innerHTML = 
-                    `📍 座標: ${targetLat.toFixed(4)}, ${targetLng.toFixed(4)} <br>` +
-                    `<span style="color:#888; font-size:0.8em;">${debugInfo}</span><br>` +
-                    `<a href="${gmapUrl}" target="_blank" class="gmap-link">👉 在 Google Maps 查看</a>`;
-
+                    `📍 命中座標！ ${infoText}<br>` +
+                    `<a href="${gmapUrl}" target="_blank" class="gmap-link">🗺️ 查看開車路線 (含起終點)</a>`;
             }, 500);
+        }
+
+        // 7. 規劃模式按鈕邏輯
+        function openRoute() {
+            const start = startMarker.getLatLng();
+            const end = endMarker.getLatLng();
+            // Google Maps Dir API 格式
+            const url = `https://www.google.com/maps/dir/?api=1&origin=${start.lat},${start.lng}&destination=${end.lat},${end.lng}&travelmode=driving`;
+            window.open(url, '_blank');
+        }
+
+        // 其他 UI 事件
+        japanWideCheck.onchange = function() {
+            const circleDiv = document.getElementById('circle-controls');
+            if (this.checked) {
+                circleDiv.classList.add('hidden');
+                map.removeLayer(rangeCircle);
+                map.setView([38.0, 137.0], 5);
+            } else {
+                circleDiv.classList.remove('hidden');
+                rangeCircle.addTo(map);
+                map.setView([centerLat, centerLng], 8);
+            }
+        };
+
+        slider.oninput = function() {
+            radiusKm = parseInt(this.value);
+            radiusDisplay.innerText = radiusKm;
+            rangeCircle.setRadius(radiusKm * 1000);
+        };
+
+        function togglePanel() {
+            controlsPanel.classList.toggle('minimized');
+            toggleBtn.innerText = controlsPanel.classList.contains('minimized') ? '☐' : '_';
         }
     </script>
 </body>
